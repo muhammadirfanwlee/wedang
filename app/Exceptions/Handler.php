@@ -3,6 +3,9 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -13,7 +16,7 @@ class Handler extends ExceptionHandler
      * @var array<int, class-string<Throwable>>
      */
     protected $dontReport = [
-        //
+        \Illuminate\Auth\Access\AuthorizationException::class,
     ];
 
     /**
@@ -37,5 +40,24 @@ class Handler extends ExceptionHandler
         $this->reportable(function (Throwable $e) {
             //
         });
+    }
+
+    public function render($request, Throwable $exception)
+    {
+        // Useful since some methods cannot be accessed in certain URL extensions
+        if ($exception instanceof AuthorizationException) {
+            return response()->json([
+                'message' => 'Unauthenticated.'
+            ], 401);
+        }
+
+        // when model with specific id not found
+        if ($exception instanceof ModelNotFoundException) {
+            $response = 'No query results for id '. $exception->getIds()[0];
+
+            return responder()->error(404, $response)->respond(404);
+        }
+
+        return parent::render($request, $exception);
     }
 }
